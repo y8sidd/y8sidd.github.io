@@ -115,6 +115,7 @@ describe("Graph navigation", () => {
       </MemoryRouter>,
     );
     const input = screen.getByRole("combobox");
+    expect(input).toHaveFocus();
     await user.type(input, "nonesuch");
     expect(screen.getByText("No matching nodes")).toBeVisible();
     await user.clear(input);

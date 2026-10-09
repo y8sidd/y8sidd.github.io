@@ -22,9 +22,9 @@ export function Panel({
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const panel = ref.current;
-    const first = panel?.querySelector<HTMLElement>(
-      '[autofocus],input,textarea,button,[tabindex="0"]',
-    );
+    const first =
+      panel?.querySelector<HTMLElement>("[autofocus],input,textarea") ??
+      panel?.querySelector<HTMLElement>('button,[tabindex="0"]');
     first?.focus();
     function keys(e: KeyboardEvent) {
       if (e.key === "Escape") {
