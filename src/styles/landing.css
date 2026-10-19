@@ -1,0 +1,610 @@
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/geist/regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/geist/medium.ttf") format("truetype");
+}
+/* Beta's palette and typography stay scoped to the landing page. */
+.gamma-landing {
+  --foreground: oklch(0.971 0.003 286);
+  --primary: oklch(0.66 0.18 286);
+  --muted-foreground: oklch(0.64 0.018 286);
+  --graph-line: oklch(0.58 0.06 278 / 28%);
+  --graph-node: oklch(0.78 0.09 283);
+  --graph-blue: oklch(0.67 0.1 252);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100svh;
+  overflow: hidden;
+  background: oklch(0.115 0 0);
+  color: var(--foreground);
+  font-family: "Geist", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.gamma-sky,
+.landing-constellation {
+  position: absolute;
+  inset: 0;
+}
+.gamma-sky {
+  z-index: 0;
+}
+.landing-constellation {
+  overflow: hidden;
+}
+.landing-constellation canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.landing-star-tooltip {
+  position: absolute;
+  pointer-events: none;
+  padding: 8px 12px;
+  border: 1px solid oklch(1 0 0 / 10%);
+  border-radius: 7px;
+  background: oklch(0.17 0.006 286 / 75%);
+  color: var(--foreground);
+  font: 11px var(--mono);
+  backdrop-filter: blur(12px);
+}
+.gamma-hero {
+  position: relative;
+  z-index: 1;
+  width: min(850px, 100%);
+  padding: 32px 24px;
+  text-align: center;
+  pointer-events: none;
+}
+.gamma-eyebrow {
+  margin: 0 0 22px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 500;
+}
+.gamma-hero h1 {
+  font-size: 64px;
+  line-height: 1.13;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin: 0;
+  text-wrap: balance;
+}
+.gamma-universe {
+  background: linear-gradient(
+    110deg,
+    var(--foreground) 10%,
+    var(--primary) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.gamma-description {
+  max-width: 570px;
+  margin: 25px auto 29px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.gamma-repo-form {
+  --glass-size: 76px;
+  --glass-gap: 14px;
+  position: relative;
+  width: min(100%, 600px);
+  height: var(--glass-size);
+  margin: 29px auto 0;
+  pointer-events: auto;
+  text-align: left;
+}
+/* Alpha's reflective capsule, with a lighter transparent body so beta's stars
+   contribute to the glass. Specular edges stay separate from the blurred fill. */
+.gamma-glass {
+  position: relative;
+  border: 1px solid #ffffff26;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 80% 0%, #ffffff12, transparent 60%),
+    linear-gradient(
+      175deg,
+      #ffffff0e 0%,
+      #ffffff03 44%,
+      #ffffff07 72%,
+      #ffffff14 100%
+    );
+  -webkit-backdrop-filter: blur(16px) saturate(155%) brightness(1.12);
+  backdrop-filter: blur(16px) saturate(155%) brightness(1.12);
+  box-shadow:
+    inset 0 1px 1px #ffffff48,
+    inset 0 -1px 1px #ffffff2b,
+    inset 2px 0 6px #ffffff0d,
+    inset -2px 0 5px #ffffff16,
+    inset 0 0 18px #ffffff04,
+    0 12px 32px #00000042;
+  transition:
+    border-color 0.4s,
+    box-shadow 0.4s,
+    background-color 0.4s;
+}
+.gamma-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    145deg,
+    #ffffffa0 0%,
+    #ffffff0c 24%,
+    #ffffff09 59%,
+    #ffffff80 88%,
+    #ffffff20
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+.gamma-glass::after {
+  content: "";
+  position: absolute;
+  inset: 3px 18px auto;
+  height: 9px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, #ffffff18 65%, transparent);
+  filter: blur(3px);
+  pointer-events: none;
+}
+.gamma-glass:hover {
+  border-color: #ffffff4a;
+  background-color: #ffffff04;
+}
+.gamma-glass:focus-within {
+  border-color: #ffffff60;
+  box-shadow:
+    inset 0 1px 2px #ffffff50,
+    inset 0 -1px 2px #ffffff30,
+    0 0 0 3px #ffffff05,
+    0 12px 32px #00000042;
+}
+.gamma-glass.invalid {
+  border-color: #d6aebc99;
+}
+.gamma-repo-form .repository-input {
+  width: 100%;
+  transition:
+    width 1.05s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.4s,
+    box-shadow 0.4s,
+    background-color 0.4s;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  z-index: 2;
+}
+.gamma-glass-reflection,
+.gamma-glass-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+}
+.gamma-glass-reflection {
+  opacity: 0.65;
+  transition: opacity 0.4s;
+}
+.gamma-glass:hover .gamma-glass-reflection,
+.gamma-glass:focus-within .gamma-glass-reflection {
+  opacity: 1;
+}
+.gamma-glass-ripple {
+  background: linear-gradient(
+    110deg,
+    transparent 15%,
+    #ffffff24 48%,
+    transparent 80%
+  );
+}
+.gamma-input-icon {
+  position: absolute;
+  left: 26px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  color: #c7c7ca;
+  pointer-events: none;
+}
+.gamma-input-icon > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.gamma-repo-form input {
+  width: 100%;
+  height: 100%;
+  padding: 0 28px 0 65px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: #f0f0f2;
+  font-size: 16px;
+  letter-spacing: -0.25px;
+  transition: opacity 0.25s;
+}
+.gamma-repo-form input::placeholder {
+  color: #a2a2a8;
+}
+.gamma-repo-form .parsed-identity {
+  position: absolute;
+  inset: 0 25px 0 65px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+  cursor: text;
+  font-size: 16px;
+}
+.gamma-repo-form .parsed-identity span {
+  color: #b3b3b8;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+.gamma-repo-form .parsed-identity strong {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+.gamma-repo-form .parsed-identity i {
+  color: #74747b;
+  font-style: normal;
+  flex-shrink: 0;
+}
+.gamma-search-bubble {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--glass-size);
+  height: var(--glass-size);
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  color: #ececf1;
+}
+.gamma-search-bubble:disabled {
+  opacity: 1;
+}
+.gamma-search-bubble:focus-visible {
+  outline: 2px solid #dcd4ff;
+  outline-offset: 4px;
+}
+.gamma-liquid-neck {
+  position: absolute;
+  top: 0;
+  right: calc(var(--glass-size) - 14px);
+  width: calc(var(--glass-gap) + 28px);
+  height: var(--glass-size);
+  z-index: 3;
+  pointer-events: none;
+}
+.gamma-input-error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(100% + 12px);
+  text-align: center;
+  font-size: 11px;
+  color: #d6aebc;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .gamma-hero {
+    padding: 28px 24px;
+  }
+  .gamma-hero h1 {
+    font-size: 38px;
+    line-height: 1.17;
+  }
+  .gamma-description {
+    font-size: 13px;
+    max-width: 420px;
+  }
+  .gamma-eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.7px;
+  }
+  .gamma-desktop-break {
+    display: none;
+  }
+  .gamma-repo-form {
+    --glass-size: 64px;
+    --glass-gap: 10px;
+  }
+  .gamma-input-icon {
+    left: 20px;
+    width: 20px;
+  }
+  .gamma-repo-form input {
+    padding-left: 52px;
+    padding-right: 18px;
+  }
+  .gamma-repo-form input::placeholder {
+    font-size: 13px;
+    letter-spacing: -0.3px;
+  }
+  .gamma-repo-form .parsed-identity {
+    left: 52px;
+    right: 17px;
+    gap: 8px;
+    font-size: 14px;
+  }
+}
+@media (max-width: 380px) {
+  .gamma-hero {
+    padding-inline: 18px;
+  }
+  .gamma-hero h1 {
+    font-size: 32px;
+  }
+}
+@media (max-height: 540px) {
+  .gamma-hero {
+    padding-block: 14px;
+  }
+  .gamma-eyebrow {
+    margin-bottom: 12px;
+  }
+  .gamma-hero h1 {
+    font-size: 34px;
+    line-height: 1.13;
+  }
+  .gamma-description {
+    margin-block: 14px 18px;
+    line-height: 1.55;
+    font-size: 12px;
+  }
+  .gamma-repo-form {
+    --glass-size: 58px;
+  }
+}
+
+.gamma-repo-form.is-split .repository-input {
+  width: calc(100% - var(--glass-size) - var(--glass-gap));
+}
+
+.gamma-check-spinner {
+  animation: gamma-check-spin 1s linear infinite;
+}
+@keyframes gamma-check-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* One shared destination for the moving landing elements and the live scene. */
+.gamma-brand-group {
+  margin-bottom: 22px;
+}
+.gamma-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font:
+    500 20px/32px "Geist",
+    sans-serif;
+  letter-spacing: -0.4px;
+  color: #f0eff5;
+}
+.gamma-brand small {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: #a2a0ac;
+}
+.gamma-brand-group .gamma-eyebrow,
+.gamma-docked-brand .gamma-eyebrow {
+  margin: 12px 0 0;
+}
+.gamma-headline-line {
+  display: block;
+}
+.gamma-landing.is-departing {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #000;
+  transition: background var(--handoff-duration) ease;
+  pointer-events: none;
+}
+.gamma-landing.is-departing .gamma-repo-form {
+  pointer-events: none;
+}
+.gamma-landing.is-departing .repository-input {
+  width: 100%;
+  height: 52px;
+  transition:
+    width var(--handoff-duration) cubic-bezier(0.65, 0, 0.2, 1),
+    height var(--handoff-duration) cubic-bezier(0.65, 0, 0.2, 1),
+    border-color 0.4s;
+}
+.gamma-landing.is-departing .parsed-identity {
+  left: 24px;
+  right: 24px;
+  transition:
+    left var(--handoff-duration) cubic-bezier(0.65, 0, 0.2, 1),
+    right var(--handoff-duration) cubic-bezier(0.65, 0, 0.2, 1);
+  cursor: default;
+  opacity: 1;
+}
+.gamma-repo-form .parsed-identity > .gamma-repo-name,
+.gamma-repo-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  overflow: hidden;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.gamma-repo-name > span {
+  color: #b3b3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.gamma-repo-name i {
+  color: #74747b;
+  font-style: normal;
+}
+.gamma-repo-name strong {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.gamma-docked-identity {
+  font-family: "Geist", sans-serif;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.gamma-docked-brand {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+.gamma-docked-brand .gamma-eyebrow {
+  color: oklch(0.64 0.018 286);
+}
+.gamma-docked-repository {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 80px;
+  width: min(420px, calc(100% - 48px));
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  font-size: 14px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.gamma-docked-repository .gamma-glass-reflection {
+  background: radial-gradient(ellipse at 50% 0%, #ffffff26, transparent 65%);
+}
+.gamma-explore .explore-identity > div {
+  display: none;
+}
+.gamma-explore .onboarding-hint {
+  bottom: 204px;
+}
+.gamma-explore.is-preparing {
+  visibility: hidden;
+}
+@media (max-width: 760px) {
+  .gamma-docked-brand {
+    top: 20px;
+  }
+  .gamma-docked-repository {
+    height: 48px;
+    font-size: 14px;
+  }
+  .gamma-landing.is-departing .repository-input {
+    height: 48px;
+  }
+  .gamma-explore .top-controls {
+    top: 92px;
+  }
+
+  .gamma-repo-form .parsed-identity > .gamma-repo-name,
+  .gamma-repo-name {
+    gap: 8px;
+  }
+}
+@media (max-height: 540px) {
+  .gamma-docked-repository {
+    bottom: 54px;
+    height: 44px;
+  }
+  .gamma-landing.is-departing .repository-input {
+    height: 44px;
+  }
+  .gamma-explore .onboarding-hint {
+    display: none;
+  }
+}
+
+.gamma-docked-identity {
+  color: oklch(0.971 0.003 286);
+  -webkit-font-smoothing: antialiased;
+}
+@media (max-width: 1050px) {
+  .gamma-explore .graph-meta {
+    bottom: 24px;
+  }
+  .gamma-explore .graph-meta small {
+    margin-top: 4px;
+  }
+}
+
+/* Fade throughout the full formation, beginning with the core's first frame. */
+.explore-page > .explore-identity,
+.explore-page > .top-controls,
+.explore-page > .graph-meta,
+.explore-page > .graph-controls,
+.explore-page > .mentor-launch,
+.explore-page:not(.has-handoff-identity) > .gamma-docked-identity {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--scene-ui-reveal, 6.5s) ease-in-out;
+}
+.explore-page.scene-ui-ready > .explore-identity,
+.explore-page.scene-ui-ready > .top-controls,
+.explore-page.scene-ui-ready > .graph-meta,
+.explore-page.scene-ui-ready > .graph-controls,
+.explore-page.scene-ui-ready > .mentor-launch,
+.explore-page.scene-ui-ready:not(.has-handoff-identity)
+  > .gamma-docked-identity {
+  opacity: 1;
+}
+.explore-page.scene-ui-ready > .explore-identity,
+.explore-page.scene-ui-ready > .top-controls,
+.explore-page.scene-ui-ready > .graph-controls,
+.explore-page.scene-ui-ready > .mentor-launch {
+  pointer-events: auto;
+}

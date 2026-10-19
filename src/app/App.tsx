@@ -1,8 +1,16 @@
-import { Routes, Route, Link, useParams } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Link,
+  useParams,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import VoidLanding from "../components/landing/VoidLanding";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
+import { AppErrorBoundary } from "../components/shared/AppErrorBoundary";
 const Explore = lazy(() => import("./Explore"));
-function Pending() {
+export function Pending() {
   const { owner, repo } = useParams();
   return (
     <main className="pending-page">
@@ -22,31 +30,75 @@ function Pending() {
   );
 }
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [handoff, setHandoff] = useState<string | null>(null);
+  const transitioning = handoff === location.pathname;
+  const previousPath = useRef(location.pathname);
+  const [landingRevision, setLandingRevision] = useState(0);
+  useEffect(() => {
+    if (
+      previousPath.current !== location.pathname &&
+      handoff &&
+      handoff !== location.pathname
+    ) {
+      setHandoff(null);
+      setLandingRevision((revision) => revision + 1);
+    }
+    previousPath.current = location.pathname;
+  }, [handoff, location.pathname]);
   return (
-    <Suspense
-      fallback={
-        <main className="pending-page">
-          <span className="eyebrow">OPENING YOUR SPACE</span>
-        </main>
-      }
-    >
-      <Routes>
-        <Route path="/" element={<VoidLanding />} />
-        <Route path="/explore/demo" element={<Explore />} />
-        <Route path="/explore/:owner/:repo" element={<Pending />} />
-        <Route
-          path="*"
-          element={
-            <main className="pending-page">
-              <span className="eyebrow">404 · OUTSIDE THE CONSTELLATION</span>
-              <h1>Nothing here. Yet.</h1>
-              <Link className="primary-button" to="/">
-                Return to the void
-              </Link>
-            </main>
-          }
-        />
-      </Routes>
-    </Suspense>
+    <AppErrorBoundary>
+      <Suspense
+        fallback={
+          <main className="pending-page">
+            <span role="status">Opening your space…</span>
+          </main>
+        }
+      >
+        <Suspense fallback={null}>
+          <Routes>
+            <Route
+              path="/explore/demo"
+              element={<Explore formationActive={!transitioning} />}
+            />
+            <Route
+              path="/explore/:owner/:repo"
+              element={<Explore formationActive={!transitioning} />}
+            />
+            <Route path="*" element={null} />
+          </Routes>
+        </Suspense>
+        <Routes location={transitioning ? "/" : location}>
+          <Route
+            path="/"
+            element={
+              <VoidLanding
+                key={landingRevision}
+                onTransitionStart={(repository) => {
+                  setHandoff(`/explore/${repository.owner}/${repository.repo}`);
+                  navigate(`/explore/${repository.owner}/${repository.repo}`);
+                }}
+                onTransitionComplete={() => setHandoff(null)}
+              />
+            }
+          />
+          <Route path="/explore/demo" element={null} />
+          <Route path="/explore/:owner/:repo" element={null} />
+          <Route
+            path="*"
+            element={
+              <main className="pending-page">
+                <span className="eyebrow">404 · OUTSIDE THE CONSTELLATION</span>
+                <h1>Nothing here. Yet.</h1>
+                <Link className="primary-button" to="/">
+                  Return to the void
+                </Link>
+              </main>
+            }
+          />
+        </Routes>
+      </Suspense>
+    </AppErrorBoundary>
   );
 }

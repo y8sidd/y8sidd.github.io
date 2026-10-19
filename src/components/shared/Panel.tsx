@@ -37,7 +37,12 @@ export function Panel({
           panel.querySelectorAll<HTMLElement>(
             'button:not(:disabled),input,textarea,select,a[href],[tabindex="0"]',
           ),
-        ).filter((el) => el.getClientRects().length);
+        ).filter(
+          (el) =>
+            el.tabIndex >= 0 &&
+            !el.matches(":disabled") &&
+            el.getClientRects().length,
+        );
         const first = elements[0];
         const last = elements.at(-1);
         if (e.shiftKey && document.activeElement === first) {

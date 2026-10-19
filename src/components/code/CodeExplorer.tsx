@@ -40,14 +40,17 @@ export default function CodeExplorer({
     citation.repositoryId === graph.repository.id &&
     citation.commitSha === source?.commitSha &&
     citation.filePath === path &&
+    Number.isInteger(citation.startLine) &&
+    Number.isInteger(citation.endLine) &&
     citation.startLine >= 1 &&
-    citation.endLine <= source.lineCount
+    citation.endLine >= citation.startLine &&
+    citation.endLine <= (source?.content.split(/\r\n?|\n/).length ?? 0)
       ? citation
       : undefined;
   useEffect(() => {
     if (!ref.current || !source) return;
     const state = EditorState.create({
-      doc: source.content.trimEnd(),
+      doc: source.content,
       extensions: [
         lineNumbers(),
         highlightActiveLineGutter(),

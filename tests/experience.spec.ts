@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-test("repository → pending → demo → inspector → source → graph", async ({
+
+test.beforeEach(async ({ page }) => {
+  await page.route("https://api.github.com/repos/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
+});
+test("repository → constellation preview → inspector → source → graph", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -9,8 +15,14 @@ test("repository → pending → demo → inspector → source → graph", async
   });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Enter a repository." }),
+    page.getByRole("heading", {
+      name: "Every repository has a universe. Explore it.",
+    }),
   ).toBeVisible();
+  await expect(page.locator(".void-center")).toHaveCSS("opacity", "1");
+  await page.screenshot({
+    path: `test-results/landing-${testInfo.project.name}.png`,
+  });
   const input = page.getByRole("textbox", { name: "GitHub repository URL" });
   await input.focus();
   await input.evaluate((el) => {
@@ -22,14 +34,13 @@ test("repository → pending → demo → inspector → source → graph", async
   });
   await expect(page.locator(".parsed-identity")).toHaveText("facebook/react");
   await input.press("Enter");
-  await expect(page.getByText("REPOSITORY RECOGNIZED")).toBeVisible();
-  await expect(
-    page.getByText(
-      "Live analysis will be available when the backend is connected.",
-    ),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Explore Interactive Demo" }).click();
-  await expect(page.getByText("INTERACTIVE PREVIEW")).toBeVisible();
+  await expect(page).toHaveURL(/\/explore\/facebook\/react$/);
+  await expect(page.getByText("INTERACTIVE PREVIEW · DEMO DATA")).toHaveCount(
+    0,
+  );
+  await expect(page.locator(".explore-identity")).toContainText(
+    "constellation-app",
+  );
   await expect(page.locator("canvas")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Node navigator", exact: true }),
@@ -100,7 +111,8 @@ test("reduced motion, invalid input, and missing source", async ({ page }) => {
     "aria-invalid",
     "true",
   );
-  await page.getByRole("button", { name: "Explore interactive demo" }).click();
+  await page.getByRole("textbox").fill("https://github.com/vercel/next.js");
+  await page.getByRole("textbox").press("Enter");
   await page
     .getByRole("button", { name: "Node navigator", exact: true })
     .click();
@@ -118,7 +130,10 @@ test("canvas selection, zoom, drag, and WebGL recovery", async ({ page }) => {
   await page.getByRole("button", { name: "Pause auto rotation" }).click();
   const root = page.locator("#label-root");
   await expect(root).toHaveCSS("visibility", "visible");
-  // Wait for the entrance choreography by observing the stable camera projection.
+  await expect(root).toHaveCSS("clip-path", "inset(0px 0% 0px 0px)", {
+    timeout: 10000,
+  });
+  // Wait for the star label and stable camera projection before clicking its core.
   await expect
     .poll(async () => {
       const a = await root.boundingBox();
@@ -161,4 +176,42 @@ test("canvas selection, zoom, drag, and WebGL recovery", async ({ page }) => {
   await page.getByRole("combobox").fill("App.tsx");
   await page.getByRole("combobox").press("Enter");
   await expect(page.getByRole("heading", { name: "App.tsx" })).toBeVisible();
+});
+
+test("constellation forms from the core before branches and files", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop",
+    "Choreography is shared across viewports.",
+  );
+  test.setTimeout(45000);
+  await page.goto("/explore/demo");
+  const root = page.locator("#label-root");
+  const branch = page.locator("#label-app");
+  const entry = page.locator('[id="label-src/main.tsx"]');
+  await expect(root).toHaveCSS("opacity", "1", { timeout: 10000 });
+  // The core opens alone, then peer branches type and grow together.
+  await expect(root).not.toHaveCSS("clip-path", "inset(0px 0% 0px 0px)");
+  await expect(branch).toHaveCSS("opacity", "0");
+  await expect(entry).toHaveCSS("opacity", "0");
+  await page.screenshot({ path: "test-results/formation-core.png" });
+  await expect(branch).toHaveCSS("opacity", "1");
+  const peerClips = await page
+    .locator("#label-app, #label-components, #label-hooks")
+    .evaluateAll((elements) =>
+      elements.map((element) => getComputedStyle(element).clipPath),
+    );
+  expect(peerClips).toHaveLength(3);
+  // Different label lengths produce different character-sized steps, but all
+  // three branches must already be typing in the same wave.
+  expect(peerClips.every((clip) => clip !== "inset(0px 100% 0px 0px)")).toBe(
+    true,
+  );
+  await expect(branch).toHaveCSS("clip-path", "inset(0px 0% 0px 0px)");
+  await page.screenshot({ path: "test-results/formation-branches.png" });
+  await expect(entry).toHaveCSS("clip-path", "inset(0px 0% 0px 0px)", {
+    timeout: 20000,
+  });
+  await page.screenshot({ path: "test-results/formation-files.png" });
 });

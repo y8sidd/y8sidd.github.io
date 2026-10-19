@@ -104,3 +104,19 @@ describe("Preview data and graph", () => {
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });
 });
+
+it("keeps deeply nested and orphaned nodes stable when data order changes", () => {
+  const nodes: GraphNode[] = Array.from({ length: 6 }, (_, i) => ({
+    id: `deep-${i}`,
+    label: `Level ${i}`,
+    path: `/level/${i}`,
+    type: "directory",
+    parentId: i === 0 ? null : `deep-${i - 1}`,
+    summary: "",
+    evidenceRefs: [],
+  }));
+  nodes.push({ ...nodes[0], id: "orphan", parentId: "missing" });
+  const first = sphericalLayout(nodes);
+  const reversed = sphericalLayout([...nodes].reverse());
+  for (const [id, point] of first) expect(reversed.get(id)).toEqual(point);
+});

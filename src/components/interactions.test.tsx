@@ -16,20 +16,26 @@ import { mockRepositoryAdapter } from "../services/mockRepositoryAdapter";
 import MentorPanel from "./ai/MentorPanel";
 import { demoGraph, citation } from "../data/demoRepository";
 import { useExperience } from "../stores/experienceStore";
+// Canvas visuals are covered in the browser tests; these exercise input behavior.
+vi.mock("./landing/LandingConstellation", () => ({
+  LandingConstellation: () => null,
+}));
 beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }));
   useExperience.getState().reset();
-  window.matchMedia = vi
-    .fn()
-    .mockImplementation(() => ({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-    }));
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  }));
   HTMLElement.prototype.scrollIntoView = vi.fn();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 describe("Repository input", () => {
   it("condenses a pasted URL and remains editable", async () => {
     const user = userEvent.setup();
@@ -55,29 +61,100 @@ describe("Repository input", () => {
       ).not.toBeInTheDocument(),
     );
   });
-  it("submits by keyboard and reaches the truthful pending route", async () => {
+  it("detects a typed URL after a pause, splits, and keeps the identity editable", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <MemoryRouter>
+        <VoidLanding />
+      </MemoryRouter>,
+    );
+    const input = screen.getByRole("textbox");
+    await user.type(input, "https://github.com/vercel/next.js");
+    await waitFor(() =>
+      expect(container.querySelector(".gamma-repo-form")).toHaveClass(
+        "is-split",
+      ),
+    );
+    expect(
+      screen.getByRole("button", { name: "Open repository" }),
+    ).toBeEnabled();
+    await user.click(
+      screen.getByRole("button", { name: "Edit repository URL" }),
+    );
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("https://github.com/vercel/next.js");
+    expect(container.querySelector(".gamma-repo-form")).not.toHaveClass(
+      "is-split",
+    );
+    await user.clear(input);
+    expect(
+      screen.getByRole("button", { name: "Open repository" }),
+    ).toBeDisabled();
+  });
+  it("waits for the detached search button before navigating after a paste", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
         <Routes>
           <Route path="/" element={<VoidLanding />} />
-          <Route
-            path="/explore/:owner/:repo"
-            element={<p>Backend pending</p>}
-          />
+          <Route path="/explore/:owner/:repo" element={<p>Preview ready</p>} />
         </Routes>
       </MemoryRouter>,
     );
-    await user.type(
-      screen.getByRole("textbox"),
-      "https://github.com/facebook/react",
-    );
-    await user.keyboard("{Enter}");
-    await waitFor(
-      () => expect(screen.getByText("Backend pending")).toBeVisible(),
-      { timeout: 2500 },
+    await user.click(screen.getByRole("textbox"));
+    await user.paste("https://github.com/facebook/react.git");
+    expect(screen.queryByText("Preview ready")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Open repository" }));
+    await waitFor(() =>
+      expect(screen.getByText("Preview ready")).toBeVisible(),
     );
   });
+  it.each(["https://github.com/facebook/react", "facebook/react"])(
+    "submits %s by keyboard and reaches the repository exploration route",
+    async (repository) => {
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <Routes>
+            <Route path="/" element={<VoidLanding />} />
+            <Route
+              path="/explore/:owner/:repo"
+              element={<p>Preview ready</p>}
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+      await user.type(screen.getByRole("textbox"), repository);
+      await user.keyboard("{Enter}");
+      await waitFor(
+        () => expect(screen.getByText("Preview ready")).toBeVisible(),
+        { timeout: 2500 },
+      );
+    },
+  );
+  it.each([404, 403, 500])(
+    "blocks navigation when GitHub returns %s",
+    async (status) => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, status } as Response);
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <VoidLanding />
+        </MemoryRouter>,
+      );
+      await user.type(screen.getByRole("textbox"), "someone/missing{Enter}");
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(
+          status === 404
+            ? "Repository not found"
+            : status === 403
+              ? "limiting checks"
+              : "could not verify",
+        ),
+      );
+      expect(screen.getByRole("textbox")).toBeEnabled();
+    },
+  );
   it("shows invalid input accessibly", async () => {
     const user = userEvent.setup();
     render(

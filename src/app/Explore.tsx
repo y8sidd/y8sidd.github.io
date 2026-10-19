@@ -1,9 +1,22 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, LoaderCircle, X } from "lucide-react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
+import {
+  entrance,
+  entranceDuration,
+  nodeEntranceDelays,
+} from "../components/constellation/entrance";
+import { Link, useParams } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowLeft } from "lucide-react";
+import { TransitionIdentity } from "../components/landing/TransitionIdentity";
 import { BrandMark } from "../components/shared/Brand";
-import { IconButton } from "../components/shared/IconButton";
 import {
   TopControls,
   GraphControls,
@@ -32,13 +45,29 @@ type LoadState =
   | { status: "loading" }
   | { status: "ready"; graph: RepositoryGraph }
   | { status: "error"; message: string };
-export default function Explore() {
+export default function Explore({
+  formationActive = true,
+}: {
+  formationActive?: boolean;
+}) {
+  const { owner, repo } = useParams();
+  const arrivedFromLanding = useRef(!formationActive);
+  const [uiReady, setUiReady] = useState(false);
+  const revealUi = useCallback(() => setUiReady(true), []);
+  const reduced = useReducedMotion();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
+  const uiRevealDuration = useMemo(
+    () =>
+      load.status === "ready"
+        ? entranceDuration(nodeEntranceDelays(load.graph.nodes)) /
+          entrance.playbackRate
+        : 6.5,
+    [load],
+  );
   const [retry, setRetry] = useState(0);
   const selected = useExperience((s) => s.selected);
   const overlay = useExperience((s) => s.overlay);
   const filter = useExperience((s) => s.filter);
-  const interacted = useExperience((s) => s.interacted);
   const open = useExperience((s) => s.open);
   const close = useExperience((s) => s.close);
   useEffect(() => {
@@ -142,23 +171,31 @@ export default function Explore() {
     return () => lifecycle.abort();
   }, [load]);
   return (
-    <main className={`explore-page ${selected ? "has-selection" : ""}`}>
+    <main
+      style={
+        {
+          "--scene-ui-reveal": `${uiRevealDuration}s`,
+        } as React.CSSProperties
+      }
+      className={`explore-page ${uiReady || load.status === "error" ? "scene-ui-ready" : ""} ${arrivedFromLanding.current ? "has-handoff-identity" : ""} ${owner && repo ? "gamma-explore" : ""} ${!formationActive ? "is-preparing" : ""} ${selected ? "has-selection" : ""}`}
+    >
       <motion.div
         className="scene-reveal"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
+        transition={{ duration: reduced ? 0 : 1.2 }}
       >
         {load.status === "ready" ? (
           <Suspense
             fallback={
-              <div className="scene-loading">
-                <LoaderCircle className="spin" size={18} />
+              <span className="scene-loading" role="status">
                 Preparing the preview
-              </div>
+              </span>
             }
           >
             <ConstellationCanvas
+              formationActive={formationActive}
+              onFormationStart={revealUi}
               nodes={visible.nodes}
               edges={visible.edges}
               layoutNodes={load.graph.nodes}
@@ -177,10 +214,9 @@ export default function Explore() {
                 </button>
               </>
             ) : (
-              <>
-                <LoaderCircle className="spin" size={18} />
+              <span className="sr-only" role="status">
                 Opening local preview
-              </>
+              </span>
             )}
           </div>
         )}
@@ -202,11 +238,8 @@ export default function Explore() {
           </p>
         </div>
       </header>
+      {owner && repo && <TransitionIdentity owner={owner} repo={repo} />}
       <TopControls />
-      <div className="preview-badge">
-        <span />
-        INTERACTIVE PREVIEW
-      </div>
       {load.status === "ready" && (
         <>
           <div className="graph-meta">
@@ -233,20 +266,6 @@ export default function Explore() {
             </small>
           </div>
           <GraphControls />
-          {!interacted && (
-            <div className="onboarding-hint">
-              <span>
-                Drag to explore <i>·</i> Scroll to zoom <i>·</i> Select a star
-                to inspect
-              </span>
-              <IconButton
-                label="Dismiss exploration hint"
-                onClick={() => useExperience.getState().interact()}
-              >
-                <X size={12} />
-              </IconButton>
-            </div>
-          )}
           <Suspense fallback={null}>
             <AnimatePresence>
               {selected && overlay.kind === "none" && (
