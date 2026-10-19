@@ -14,14 +14,14 @@ export class AppErrorBoundary extends Component<
     return (
       <main className="pending-page" role="alert">
         <h1>The preview couldn’t load.</h1>
-        <p>Check that the local server is running, then reload to try again.</p>
+        <p>Check your connection, then reload to try again.</p>
         <button
           className="primary-button"
           onClick={() => window.location.reload()}
         >
           Reload preview
         </button>
-        <a className="text-button" href="/">
+        <a className="text-button" href={import.meta.env.BASE_URL}>
           Return to the landing page
         </a>
       </main>
