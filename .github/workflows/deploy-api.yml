@@ -1,0 +1,31 @@
+name: Deploy RepoMentor API
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: repomentor-api
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix backend
+      - run: npm test
+      - run: npm run test:backend
+      - run: npm run backend:check
+      - run: npm run test:runtime
+      - name: Deploy the API
+        run: npm run deploy --prefix backend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

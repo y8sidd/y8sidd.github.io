@@ -1,0 +1,5 @@
+ALLOWED_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:5174"
+GITHUB_TOKEN=""
+# Optional free bot verification; also configure VITE_TURNSTILE_SITE_KEY in the frontend.
+TURNSTILE_SECRET_KEY=""
+TURNSTILE_HOSTNAME="y8sidd.github.io"

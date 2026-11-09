@@ -69,7 +69,7 @@ export default function CommandPalette({
   return (
     <Panel
       title={list ? "Node navigator" : "Find your way"}
-      subtitle={`${graph.nodes.length} nodes in demo / constellation-app`}
+      subtitle={`${graph.nodes.length} nodes in ${graph.repository.owner} / ${graph.repository.name}`}
       className="search-panel"
     >
       <div className="search-input">

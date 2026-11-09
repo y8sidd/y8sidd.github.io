@@ -6,6 +6,8 @@ describe("GitHub URL parser", () => {
     "https://github.com/facebook/react/",
     "https://github.com/facebook/react.git",
     " https://github.com/facebook/react.git/ ",
+    "facebook/react",
+    " facebook/react.git/ ",
   ])("extracts and normalizes %s", (url) =>
     expect(parseGitHubUrl(url)).toEqual({
       owner: "facebook",
@@ -16,6 +18,11 @@ describe("GitHub URL parser", () => {
   it.each([
     "",
     "not a url",
+    "facebook",
+    "facebook/react/tree/main",
+    "facebook/react?x=1",
+    "facebook/..",
+    "-facebook/react",
     "http://github.com/a/b",
     "https://github.com.evil.example/a/b",
     "https://evil.example/github.com/a/b",

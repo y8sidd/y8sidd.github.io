@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-test("repository → pending → demo → inspector → source → graph", async ({
+
+test("demo constellation → inspector → source → graph", async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -7,29 +8,10 @@ test("repository → pending → demo → inspector → source → graph", async
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Enter a repository." }),
-  ).toBeVisible();
-  const input = page.getByRole("textbox", { name: "GitHub repository URL" });
-  await input.focus();
-  await input.evaluate((el) => {
-    const clipboard = new DataTransfer();
-    clipboard.setData("text", "https://github.com/facebook/react.git");
-    el.dispatchEvent(
-      new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true }),
-    );
-  });
-  await expect(page.locator(".parsed-identity")).toHaveText("facebook/react");
-  await input.press("Enter");
-  await expect(page.getByText("REPOSITORY RECOGNIZED")).toBeVisible();
-  await expect(
-    page.getByText(
-      "Live analysis will be available when the backend is connected.",
-    ),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Explore Interactive Demo" }).click();
-  await expect(page.getByText("INTERACTIVE PREVIEW")).toBeVisible();
+  await page.goto("/explore/demo");
+  await expect(page.locator(".explore-identity")).toContainText(
+    "constellation-app",
+  );
   await expect(page.locator("canvas")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Node navigator", exact: true }),
@@ -100,7 +82,9 @@ test("reduced motion, invalid input, and missing source", async ({ page }) => {
     "aria-invalid",
     "true",
   );
-  await page.getByRole("button", { name: "Explore interactive demo" }).click();
+  // Live routes now enforce actual repository limits. The missing-source state
+  // below belongs to the explicit local demo; live failures have their own tests.
+  await page.goto("/explore/demo");
   await page
     .getByRole("button", { name: "Node navigator", exact: true })
     .click();
@@ -118,7 +102,10 @@ test("canvas selection, zoom, drag, and WebGL recovery", async ({ page }) => {
   await page.getByRole("button", { name: "Pause auto rotation" }).click();
   const root = page.locator("#label-root");
   await expect(root).toHaveCSS("visibility", "visible");
-  // Wait for the entrance choreography by observing the stable camera projection.
+  await expect(root).toHaveCSS("clip-path", "inset(0px 0% 0px 0px)", {
+    timeout: 10000,
+  });
+  // Wait for the star label and stable camera projection before clicking its core.
   await expect
     .poll(async () => {
       const a = await root.boundingBox();
@@ -161,4 +148,69 @@ test("canvas selection, zoom, drag, and WebGL recovery", async ({ page }) => {
   await page.getByRole("combobox").fill("App.tsx");
   await page.getByRole("combobox").press("Enter");
   await expect(page.getByRole("heading", { name: "App.tsx" })).toBeVisible();
+});
+
+test("constellation forms from the core before branches and files", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "desktop",
+    "Choreography is shared across viewports.",
+  );
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  // Record inside the browser from before mount. Sequential external assertions
+  // can miss the short bloom window on a busy test machine.
+  await page.addInitScript(() => {
+    const times: Record<string, number> = {};
+    Object.defineProperty(window, "formationTimes", { value: times });
+    const labels = {
+      root: "label-root",
+      app: "label-app",
+      components: "label-components",
+      hooks: "label-hooks",
+      entry: "label-src/main.tsx",
+    };
+    function sample() {
+      for (const [key, id] of Object.entries(labels)) {
+        const element = document.getElementById(id);
+        if (
+          element &&
+          Number(element.style.opacity) > 0.05 &&
+          times[key] === undefined
+        )
+          times[key] = performance.now();
+      }
+      const entry = document.getElementById(labels.entry);
+      if (
+        entry &&
+        getComputedStyle(entry).clipPath === "inset(0px 0% 0px 0px)" &&
+        Object.keys(labels).every((key) => times[key] !== undefined)
+      )
+        times.complete = performance.now();
+      else requestAnimationFrame(sample);
+    }
+    requestAnimationFrame(sample);
+  });
+  await page.goto("/explore/demo");
+  const read = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { formationTimes: Record<string, number> })
+          .formationTimes,
+    );
+  await expect
+    .poll(async () => Boolean((await read()).complete), { timeout: 20000 })
+    .toBe(true);
+  const times = await read();
+  expect(times.root).toBeLessThan(
+    Math.min(times.app, times.components, times.hooks),
+  );
+  expect(Math.max(times.app, times.components, times.hooks)).toBeLessThan(
+    times.entry,
+  );
+  expect(
+    Math.max(times.app, times.components, times.hooks) -
+      Math.min(times.app, times.components, times.hooks),
+  ).toBeLessThan(350);
+  await page.screenshot({ path: "test-results/formation-complete.png" });
 });

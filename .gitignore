@@ -5,3 +5,15 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 .DS_Store
+
+.env
+.env.*
+!.env.example
+backend/.dev.vars
+backend/.dev.vars.*
+!backend/.dev.vars.example
+backend/.wrangler/
+backend/dist/
+.version-backups/
+
+.pages-test/

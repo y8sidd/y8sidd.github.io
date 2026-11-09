@@ -10,9 +10,14 @@ import { javascript } from "@codemirror/lang-javascript";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { Copy, Check, FileCode2 } from "lucide-react";
-import type { RepositoryGraph, SourceCitation } from "../../types/repository";
+import type {
+  RepositoryGraph,
+  SourceCitation,
+  SourceFile,
+} from "../../types/repository";
 import { Panel } from "../shared/Panel";
 import { IconButton } from "../shared/IconButton";
+import { adapterFor, isDemo } from "../../services/adapters";
 const monochrome = HighlightStyle.define([
   { tag: tags.keyword, color: "#c8c8c8" },
   { tag: tags.string, color: "#a4aca7" },
@@ -34,24 +39,53 @@ export default function CodeExplorer({
   const ref = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [copyError, setCopyError] = useState(false);
-  const source = graph.sources.find((f) => f.path === path);
+  const demo = isDemo(graph);
+  const [loaded, setLoaded] = useState<SourceFile | null>(null);
+  const [loading, setLoading] = useState(!demo);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  const source = demo ? graph.sources.find((f) => f.path === path) : loaded;
+  useEffect(() => {
+    if (demo) return;
+    const controller = new AbortController();
+    setLoaded(null);
+    setLoading(true);
+    setError("");
+    void adapterFor(graph)
+      .getSource(graph.repository.id, path, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setLoaded(result);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [demo, graph.repository.id, path, retry]);
   const validCitation =
     citation &&
     citation.repositoryId === graph.repository.id &&
     citation.commitSha === source?.commitSha &&
     citation.filePath === path &&
+    Number.isInteger(citation.startLine) &&
+    Number.isInteger(citation.endLine) &&
     citation.startLine >= 1 &&
-    citation.endLine <= source.lineCount
+    citation.endLine >= citation.startLine &&
+    citation.endLine <= (source?.content.split(/\r\n?|\n/).length ?? 0)
       ? citation
       : undefined;
   useEffect(() => {
     if (!ref.current || !source) return;
     const state = EditorState.create({
-      doc: source.content.trimEnd(),
+      doc: source.content,
       extensions: [
         lineNumbers(),
         highlightActiveLineGutter(),
-        javascript({ jsx: true, typescript: true }),
+        ...(["typescript", "javascript"].includes(source.language)
+          ? [javascript({ jsx: true, typescript: true })]
+          : []),
         syntaxHighlighting(monochrome),
         EditorState.readOnly.of(true),
         EditorView.editable.of(false),
@@ -129,7 +163,11 @@ export default function CodeExplorer({
   return (
     <Panel
       title={path.split("/").at(-1) ?? "Source explorer"}
-      subtitle="Read-only · local demo source"
+      subtitle={
+        demo
+          ? "Read-only · local demo source"
+          : "Read-only · fetched on request"
+      }
       className="code-panel"
     >
       <div className="code-toolbar">
@@ -166,11 +204,27 @@ export default function CodeExplorer({
       ) : (
         <div className="empty-state">
           <FileCode2 size={28} />
-          <h3>Source not included</h3>
+          <h3>
+            {loading
+              ? "Loading source…"
+              : error
+                ? "Source unavailable"
+                : "Source not included"}
+          </h3>
           <p>
-            This is a structural preview node. Source retrieval will be
-            available through the repository adapter.
+            {loading
+              ? "Fetching just this file from the pinned repository revision."
+              : error ||
+                "This is a structural preview node. Source retrieval is available for supported files."}
           </p>
+          {error && (
+            <button
+              className="small-button"
+              onClick={() => setRetry((r) => r + 1)}
+            >
+              Try again
+            </button>
+          )}
         </div>
       )}
       <footer className="code-footer">
@@ -179,7 +233,8 @@ export default function CodeExplorer({
           {source ? ` · ${source.lineCount} lines` : ""}
         </span>
         <span>
-          demo / constellation-app · {graph.repository.commitSha.slice(0, 7)}
+          {graph.repository.owner} / {graph.repository.name} ·{" "}
+          {graph.repository.commitSha.slice(0, 7)}
         </span>
       </footer>
     </Panel>

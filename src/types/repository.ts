@@ -21,6 +21,8 @@ export interface GraphNode {
   evidenceRefs: string[];
   importance?: number;
   technology?: string;
+  byteSize?: number;
+  sourceAvailable?: boolean;
 }
 export interface GraphEdge {
   id: string;

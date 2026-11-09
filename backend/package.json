@@ -1,0 +1,21 @@
+{
+  "name": "repomentor-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "test:runtime": "npm run build && node test/runtime-smoke.mjs"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.28.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261104.1",
+    "typescript": "~5.9.3",
+    "wrangler": "^4.0.0",
+    "miniflare": "5.20261104.0-beta"
+  }
+}

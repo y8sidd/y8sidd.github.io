@@ -5,12 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "start": "node index.js",
+    "start": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests *.ts *.json index.html README.md"
+    "format": "prettier --write src tests *.ts *.json index.html README.md",
+    "backend:dev": "npm run dev --prefix backend",
+    "backend:check": "npm run check --prefix backend",
+    "backend:build": "npm run build --prefix backend",
+    "test:backend": "vitest run --config backend/vitest.config.ts",
+    "test:runtime": "npm run test:runtime --prefix backend",
+    "test:pages": "node tests/pages-smoke.mjs"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.4",

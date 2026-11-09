@@ -27,8 +27,10 @@ export function sphericalLayout(nodes: GraphNode[]): Map<string, Position> {
       ]);
     });
   });
-  nodes.forEach((n, i) => {
-    if (!positions.has(n.id)) positions.set(n.id, sphere(i, nodes.length, 4));
-  });
+  [...nodes]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .forEach((n, i) => {
+      if (!positions.has(n.id)) positions.set(n.id, sphere(i, nodes.length, 4));
+    });
   return positions;
 }

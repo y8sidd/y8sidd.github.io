@@ -1,9 +1,22 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, LoaderCircle, X } from "lucide-react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
+import {
+  entrance,
+  entranceDuration,
+  nodeEntranceDelays,
+} from "../components/constellation/entrance";
+import { Link, useParams } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowLeft } from "lucide-react";
+import { TransitionIdentity } from "../components/landing/TransitionIdentity";
 import { BrandMark } from "../components/shared/Brand";
-import { IconButton } from "../components/shared/IconButton";
 import {
   TopControls,
   GraphControls,
@@ -16,7 +29,11 @@ import {
 import { useExperience } from "../stores/experienceStore";
 import { filterGraph } from "../lib/graphUtils";
 import { mockRepositoryAdapter } from "../services/mockRepositoryAdapter";
-import type { RepositoryGraph } from "../types/repository";
+import {
+  liveRepositoryAdapter,
+  closeRepositorySession,
+} from "../services/liveRepositoryAdapter";
+import type { RepositoryGraph, GraphEdge } from "../types/repository";
 const ConstellationCanvas = lazy(
   () => import("../components/constellation/ConstellationCanvas"),
 );
@@ -32,28 +49,55 @@ type LoadState =
   | { status: "loading" }
   | { status: "ready"; graph: RepositoryGraph }
   | { status: "error"; message: string };
-export default function Explore() {
+export default function Explore({
+  formationActive = true,
+}: {
+  formationActive?: boolean;
+}) {
+  const { owner, repo } = useParams();
+  const arrivedFromLanding = useRef(!formationActive);
+  const [uiReady, setUiReady] = useState(false);
+  const revealUi = useCallback(() => setUiReady(true), []);
+  const reduced = useReducedMotion();
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
+  const uiRevealDuration = useMemo(
+    () =>
+      load.status === "ready"
+        ? Math.min(
+            owner && repo ? 7 : Infinity,
+            entranceDuration(nodeEntranceDelays(load.graph.nodes)) /
+              entrance.playbackRate,
+          )
+        : 6.5,
+    [load, owner, repo],
+  );
   const [retry, setRetry] = useState(0);
   const selected = useExperience((s) => s.selected);
   const overlay = useExperience((s) => s.overlay);
   const filter = useExperience((s) => s.filter);
-  const interacted = useExperience((s) => s.interacted);
   const open = useExperience((s) => s.open);
   const close = useExperience((s) => s.close);
   useEffect(() => {
     useExperience.getState().reset();
     const controller = new AbortController();
     setLoad({ status: "loading" });
-    mockRepositoryAdapter
-      .getGraph("demo/constellation-app", controller.signal)
-      .then((graph) => setLoad({ status: "ready", graph }))
+    setUiReady(false);
+    const adapter =
+      owner && repo ? liveRepositoryAdapter : mockRepositoryAdapter;
+    adapter
+      .getGraph(
+        owner && repo ? `${owner}/${repo}` : "demo/constellation-app",
+        controller.signal,
+      )
+      .then((graph) => {
+        if (!controller.signal.aborted) setLoad({ status: "ready", graph });
+      })
       .catch((error) => {
         if (error.name !== "AbortError")
           setLoad({ status: "error", message: error.message });
       });
     return () => controller.abort();
-  }, [retry]);
+  }, [retry, owner, repo]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const editing = (e.target as HTMLElement)?.matches(
@@ -87,7 +131,7 @@ export default function Explore() {
     [load, filter, selected],
   );
   useEffect(() => {
-    if (load.status !== "ready") return;
+    if (load.status !== "ready" || owner || repo) return;
     type Context = {
       registerTool: (
         tool: {
@@ -141,24 +185,48 @@ export default function Explore() {
     }
     return () => lifecycle.abort();
   }, [load]);
+  const addEdges = (edges: GraphEdge[]) =>
+    setLoad((current) => {
+      if (current.status !== "ready") return current;
+      const ids = new Set(current.graph.edges.map((edge) => edge.id));
+      return {
+        status: "ready",
+        graph: {
+          ...current.graph,
+          edges: [
+            ...current.graph.edges,
+            ...edges.filter((edge) => !ids.has(edge.id)),
+          ],
+        },
+      };
+    });
   return (
-    <main className={`explore-page ${selected ? "has-selection" : ""}`}>
+    <main
+      style={
+        {
+          "--scene-ui-reveal": `${uiRevealDuration}s`,
+        } as React.CSSProperties
+      }
+      className={`explore-page ${uiReady || load.status === "error" ? "scene-ui-ready" : ""} ${arrivedFromLanding.current ? "has-handoff-identity" : ""} ${owner && repo ? "gamma-explore" : ""} ${!formationActive ? "is-preparing" : ""} ${selected ? "has-selection" : ""}`}
+    >
       <motion.div
         className="scene-reveal"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 1 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 1.2 }}
+        transition={{ duration: reduced ? 0 : 1.2 }}
       >
         {load.status === "ready" ? (
           <Suspense
             fallback={
-              <div className="scene-loading">
-                <LoaderCircle className="spin" size={18} />
+              <span className="scene-loading" role="status">
                 Preparing the preview
-              </div>
+              </span>
             }
           >
             <ConstellationCanvas
+              formationActive={formationActive}
+              durationBudget={owner && repo ? 7 : undefined}
+              onFormationStart={revealUi}
               nodes={visible.nodes}
               edges={visible.edges}
               layoutNodes={load.graph.nodes}
@@ -171,16 +239,21 @@ export default function Explore() {
                 <p>{load.message}</p>
                 <button
                   className="primary-button"
-                  onClick={() => setRetry((r) => r + 1)}
+                  onClick={() => {
+                    closeRepositorySession();
+                    setRetry((r) => r + 1);
+                  }}
                 >
                   Retry
                 </button>
+                <Link className="text-button" to="/">
+                  Choose another repository
+                </Link>
               </>
             ) : (
-              <>
-                <LoaderCircle className="spin" size={18} />
-                Opening local preview
-              </>
+              <span className="sr-only" role="status">
+                Opening repository
+              </span>
             )}
           </div>
         )}
@@ -197,16 +270,14 @@ export default function Explore() {
             </span>
           </div>
           <p>
-            <span>demo</span>
-            <i>/</i>constellation-app
+            <span>{owner || "demo"}</span>
+            <i>/</i>
+            {repo || "constellation-app"}
           </p>
         </div>
       </header>
+      {owner && repo && <TransitionIdentity owner={owner} repo={repo} />}
       <TopControls />
-      <div className="preview-badge">
-        <span />
-        INTERACTIVE PREVIEW
-      </div>
       {load.status === "ready" && (
         <>
           <div className="graph-meta">
@@ -233,24 +304,14 @@ export default function Explore() {
             </small>
           </div>
           <GraphControls />
-          {!interacted && (
-            <div className="onboarding-hint">
-              <span>
-                Drag to explore <i>·</i> Scroll to zoom <i>·</i> Select a star
-                to inspect
-              </span>
-              <IconButton
-                label="Dismiss exploration hint"
-                onClick={() => useExperience.getState().interact()}
-              >
-                <X size={12} />
-              </IconButton>
-            </div>
-          )}
           <Suspense fallback={null}>
             <AnimatePresence>
               {selected && overlay.kind === "none" && (
-                <NodeInspector key="inspector" graph={load.graph} />
+                <NodeInspector
+                  key={selected}
+                  graph={load.graph}
+                  onEdges={addEdges}
+                />
               )}
             </AnimatePresence>
             {overlay.kind !== "none" && (

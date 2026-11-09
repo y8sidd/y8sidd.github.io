@@ -25,8 +25,9 @@ export function HelpPanel() {
       </div>
       <p className="utility-note">
         Prefer a keyboard? The node navigator offers searchable access to every
-        node. Imports in this demo are backed by local sample files; containment
-        describes the preview hierarchy.
+        node. Containment shows the folder hierarchy. For live repositories,
+        select a JavaScript or TypeScript file and choose Analyze imports to add
+        its local connections.
       </p>
     </Panel>
   );
@@ -118,8 +119,8 @@ export function FilterPanel() {
         Reset filters
       </button>
       <p className="utility-note">
-        Only relationships with both endpoints visible are drawn. All data
-        belongs to the local preview.
+        Only relationships with both endpoints visible are drawn. Source code
+        loads separately when you request it.
       </p>
     </Panel>
   );

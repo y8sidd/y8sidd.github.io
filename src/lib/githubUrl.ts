@@ -5,7 +5,9 @@ export interface ParsedRepository {
 }
 export function parseGitHubUrl(value: string): ParsedRepository | null {
   try {
-    const url = new URL(value.trim());
+    const trimmed = value.trim();
+    const shorthand = /^[A-Za-z0-9-]+\/[A-Za-z0-9_.-]+\/?$/.test(trimmed);
+    const url = new URL(shorthand ? `https://github.com/${trimmed}` : trimmed);
     if (
       url.protocol !== "https:" ||
       url.hostname !== "github.com" ||

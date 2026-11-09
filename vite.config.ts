@@ -3,6 +3,17 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    watch: {
+      ignored: [
+        "**/backend/**",
+        "**/test-results/**",
+        "**/playwright-report/**",
+        "**/.pages-test/**",
+        "**/.version-backups/**",
+      ],
+    },
+  },
   optimizeDeps: {
     include: [
       "@codemirror/state",

@@ -1,3 +1,4 @@
+import type { AICredentials } from "../../shared/ai";
 import type {
   AnalysisStatus,
   MentorResponse,
@@ -19,6 +20,7 @@ export interface RepositoryAdapter {
     question: string,
     nodeId?: string,
     signal?: AbortSignal,
+    credentials?: AICredentials,
   ): Promise<MentorResponse>;
   getAnalysisStatus(
     repositoryId: string,
